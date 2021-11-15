@@ -3,6 +3,11 @@ uuid = "de2defd0-d76e-464a-9029-1d71e199ae58"
 authors = ["joshday <emailjoshday@gmail.com> and contributors"]
 version = "0.1.0"
 
+[deps]
+DBInterface = "a10d1c49-ce27-4219-8d33-6db1a4562965"
+JSON3 = "0f8b85d8-7281-11e9-16c2-39a750bddbf1"
+SQLite = "0aa819cd-b072-5ff4-a722-6bc24af294d9"
+
 [compat]
 julia = "1"
 
