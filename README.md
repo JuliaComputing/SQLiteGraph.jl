@@ -32,32 +32,22 @@ db[1]
 ### Adding Edges 
 
 ```julia
-db[1,2] = (a=1, b=2)
+db[1, 2] = (a=1, b=2)
 
-db[1,2]
+db[1, 2]
 # "{\"a\":1,\"b\":2}"
 ```
 
-### `ReadAs`
-
-- You can wrap a `DB` with `ReadAs` to enforce how you want the `TEXT` to be `JSON3.read`:
+### Querying Edges
 
 ```julia
-rdb = ReadAs(db, Dict{String, Int})
-# ReadAs{Dict{String, Int64}}: SimpleGraphDB(":memory:") (2 nodes, 1 edges)
+db[1, :]  # all outgoing edges from node 1
 
-rdb[1]
-# Dict{String, Int64} with 2 entries:
-#   "x" => 1
-#   "y" => 2
+db[1, 2:5]  # outgoing edges from node 1 to any of nodes 2,3,4,5 
 
-rdb[1,2]
-# Dict{String, Int64} with 2 entries:
-#   "b" => 2
-#   "a" => 1
+db[:, 1]  # all incoming edges to node 1
+
 ```
-
-
 
 ## Attribution
 

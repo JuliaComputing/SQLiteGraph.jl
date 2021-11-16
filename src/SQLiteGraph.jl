@@ -111,19 +111,19 @@ function Base.iterate(db::DB, state = (length(db), 1))
     single_result_execute(db, "SELECT props FROM nodes WHERE id = ?", (state[2],)), (state[1], state[2] + 1)
 end
 
-#-----------------------------------------------------------------------------# ReadAs 
-struct ReadAs{T}
-    db::DB 
-end
-ReadAs(db::DB, T::DataType=Dict{String,Any}) = ReadAs{T}(db)
-Base.show(io::IO, r::ReadAs{T}) where {T} = (print(io, "ReadAs{$T}: "); print(io, r.db))
-Base.setindex!(r::ReadAs, args...) = setindex!(r.db, args...)
-function Base.getindex(r::ReadAs{T}, args...) where {T} 
-    res=r.db[args...]; isnothing(res) ? res : JSON3.read.(res, T)
-end
+# #-----------------------------------------------------------------------------# ReadAs 
+# struct ReadAs{T}
+#     db::DB 
+# end
+# ReadAs(db::DB, T::DataType=Dict{String,Any}) = ReadAs{T}(db)
+# Base.show(io::IO, r::ReadAs{T}) where {T} = (print(io, "ReadAs{$T}: "); print(io, r.db))
+# Base.setindex!(r::ReadAs, args...) = setindex!(r.db, args...)
+# function Base.getindex(r::ReadAs{T}, args...) where {T} 
+#     res=r.db[args...]; isnothing(res) ? res : JSON3.read.(res, T)
+# end
 
-_transform(node::Node{String}, T) = Node(node.id, JSON)
-Base.deleteat!(r::ReadAs, args...) = deleteat!(r.db, args...)
+# _transform(node::Node{String}, T) = Node(node.id, JSON)
+# Base.deleteat!(r::ReadAs, args...) = deleteat!(r.db, args...)
 
 #-----------------------------------------------------------------------------# nodes
 function Base.setindex!(db::DB, props, id::Integer)
