@@ -20,8 +20,9 @@ db = DB()
 ### Adding Nodes
 
 ```julia
-db[1] = (x=1, y=2) 
 # properties must be `JSON3.write`-able (saved in the SQLite database as TEXT)
+db[1] = (x=1, y=2) 
+
 db[2] = (x=1, y=10)
 
 db[1] 

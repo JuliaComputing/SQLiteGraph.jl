@@ -14,14 +14,29 @@ function single_result_execute(db, stmt, args...)
     isempty(ex) ? nothing : values(first(ex))[1]
 end
 
+struct Node{T} 
+    id::Int 
+    props::T 
+end
+Node(id::Integer, props=nothing) = Node(id, props)
+Base.show(io::IO, o::Node) = (print(io, "Node($(o.id)) with props: "); show(io, o.props))
+
+struct Edge{T} 
+    source::Int 
+    target::Int 
+    props::T 
+end
+Base.show(io::IO, o::Edge) = (print(io, "Edge($(o.source) → $(o.target)) with props: "); show(io, o.props))
+Edge(source::Integer, target::Integer, props=nothing) = Edge(source, target, props)
+
 #-----------------------------------------------------------------------------# DB
 """
     SimpleGraph.DB(file = ":memory")
 
 Create a graph database (in memory by default).  Edge and node properties are saved in the database 
-as text (`JSON3.write(props)`).
+as `TEXT` (see [https://www.sqlite.org/datatype3.html](https://www.sqlite.org/datatype3.html)) via `JSON3.write(props)`.
 
-### Interal Table Structure
+# Interal Table Structure
 
 - `nodes`
   - `id INTEGER NOT NULL UNIQUE`
@@ -30,6 +45,16 @@ as text (`JSON3.write(props)`).
   - `source INTEGER`
   - `target INTEGER`
   - `props TEXT` (JSON.write)
+
+# Examples 
+
+    db = DB()
+
+    db[1] = (x=1, y=2)  # node 1
+
+    db[2] = (x=1, y=3)  # node 2
+
+    db[1,2] = (z = 4)   # edge from 1 → 2
 """
 struct DB
     sqlitedb::SQLite.DB
@@ -70,12 +95,21 @@ execute(db::DB, args...; kw...) = execute(db.sqlitedb, args...; kw...)
 n_nodes(db::DB) = single_result_execute(db, "SELECT Count(*) FROM nodes")
 n_edges(db::DB) = single_result_execute(db, "SELECT Count(*) FROM edges")
 
-Base.length(db::DB) = n_nodes(db)
-Base.size(db::DB) = (n_nodes(db), n_edges(db))
-Base.lastindex(db::DB) = length(db)
-
 init!(db::DB, n) = (foreach(id -> setindex!(db, nothing, id), 1:n); db)
 
+
+#-----------------------------------------------------------------------------# interfaces
+Base.length(db::DB) = n_nodes(db)
+Base.size(db::DB) = (nodes=n_nodes(db), edges=n_edges(db))
+Base.lastindex(db::DB) = length(db)
+Base.axes(db::DB, i) = size(db)[i]
+
+Broadcast.broadcastable(db::DB) = Ref(db)
+
+function Base.iterate(db::DB, state = (length(db), 1))
+    state[2] > state[1] && return nothing
+    single_result_execute(db, "SELECT props FROM nodes WHERE id = ?", (state[2],)), (state[1], state[2] + 1)
+end
 
 #-----------------------------------------------------------------------------# ReadAs 
 struct ReadAs{T}
@@ -84,17 +118,27 @@ end
 ReadAs(db::DB, T::DataType=Dict{String,Any}) = ReadAs{T}(db)
 Base.show(io::IO, r::ReadAs{T}) where {T} = (print(io, "ReadAs{$T}: "); print(io, r.db))
 Base.setindex!(r::ReadAs, args...) = setindex!(r.db, args...)
-Base.getindex(r::ReadAs{T}, args...) where {T} = (res=r.db[args...]; isnothing(res) ? res : JSON3.read(res, T))
+function Base.getindex(r::ReadAs{T}, args...) where {T} 
+    res=r.db[args...]; isnothing(res) ? res : JSON3.read.(res, T)
+end
+
+_transform(node::Node{String}, T) = Node(node.id, JSON)
 Base.deleteat!(r::ReadAs, args...) = deleteat!(r.db, args...)
 
 #-----------------------------------------------------------------------------# nodes
 function Base.setindex!(db::DB, props, id::Integer)
+    id ≤ length(db) + 1 || error("Cannot add node ID=$id to DB with $(length(db)) nodes.  IDs must be added sequentially.")
     execute(db, "INSERT INTO nodes VALUES(?, json(?))", (id, JSON3.write(props)))
     db
 end
 function Base.getindex(db::DB, id::Integer)
     res = single_result_execute(db, "SELECT props FROM nodes WHERE id = ?", (id,))
-    isnothing(res) ? throw(BoundsError(db, id)) : res
+    isnothing(res) ? throw(BoundsError(db, id)) : Node(id, res)
+end
+Base.getindex(db::DB, ids::AbstractArray{<:Integer}) = getindex.(db, ids)
+function Base.getindex(db::DB, ::Colon)
+    res = execute(db, "SELECT props from nodes")
+    [Node(i,row.props) for (i,row) in enumerate(res)]
 end
 function Base.deleteat!(db::DB, id::Integer)
     execute(db, "DELETE FROM nodes WHERE id = ?", (id,))
@@ -108,8 +152,30 @@ function Base.setindex!(db::DB, props, i::Integer, j::Integer)
     db
 end
 function Base.getindex(db::DB, i::Integer, j::Integer) 
-    single_result_execute(db, "SELECT props FROM edges WHERE source = ? AND target = ? ", (i,j))
+    res = single_result_execute(db, "SELECT props FROM edges WHERE source = ? AND target = ? ", (i,j))
+    isnothing(res) ? res : Edge(i, j, res)
 end
+Base.getindex(db::DB, i::Integer, js::AbstractArray{<:Integer}) = filter!(!isnothing, getindex.(db, i, js))
+Base.getindex(db::DB, is::AbstractArray{<:Integer}, j::Integer) = filter!(!isnothing, getindex.(db, is, j))
+function Base.getindex(db::DB, is::AbstractArray{<:Integer}, js::AbstractArray{<:Integer})
+    res = vcat((getindex(db, i, js) for i in is)...)
+    isempty(res) ? nothing : res
+end
+function Base.getindex(db::DB, i::Integer, ::Colon)
+    res = execute(db, "SELECT * FROM edges WHERE source=?", (i,))
+    isempty(res) ? nothing : [Edge(row...) for row in res]
+end
+function Base.getindex(db::DB, ::Colon, j::Integer)
+    res = execute(db, "SELECT * FROM edges WHERE target=?", (j,))
+    isempty(res) ? nothing : [Edge(row...) for row in res]
+end
+function Base.getindex(db::DB, ::Colon, ::Colon)
+    res = execute(db, "SELECT * from edges")
+    isempty(res) ? nothing : [Edge(row...) for row in res]
+end
+Base.getindex(db::DB, is::AbstractArray{<:Integer}, ::Colon) = filter!(!isnothing, getindex.(db, is, :))
+Base.getindex(db::DB, ::Colon, js::AbstractArray{<:Integer}) = filter!(!isnothing, getindex.(db, :, js))
+
 function Base.deleteat!(db::DB, i::Integer, j::Integer)
     execute(db, "DELETE FROM edges WHERE source = ? AND target = ?", (i, j))
     db
