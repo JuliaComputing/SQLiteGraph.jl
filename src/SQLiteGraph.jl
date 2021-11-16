@@ -4,7 +4,7 @@ using SQLite: SQLite
 import DBInterface: execute
 using JSON3: JSON3
 
-export DB, Node, Edge
+export DB, ReadAs
 
 #-----------------------------------------------------------------------------# utils 
 read_sql(fn::String) = read(joinpath(@__DIR__, "sql", fn), String)
@@ -71,6 +71,7 @@ n_nodes(db::DB) = single_result_execute(db, "SELECT Count(*) FROM nodes")
 n_edges(db::DB) = single_result_execute(db, "SELECT Count(*) FROM edges")
 
 Base.length(db::DB) = n_nodes(db)
+Base.size(db::DB) = (n_nodes(db), n_edges(db))
 Base.lastindex(db::DB) = length(db)
 
 init!(db::DB, n) = (foreach(id -> setindex!(db, nothing, id), 1:n); db)
@@ -81,11 +82,12 @@ struct ReadAs{T}
     db::DB 
 end
 ReadAs(db::DB, T::DataType=Dict{String,Any}) = ReadAs{T}(db)
+Base.show(io::IO, r::ReadAs{T}) where {T} = (print(io, "ReadAs{$T}: "); print(io, r.db))
 Base.setindex!(r::ReadAs, args...) = setindex!(r.db, args...)
-Base.getindex(r::ReadAs{T}, args...) where {T} = (res=r[args...]; isnothing(res) ? res : JSON3.read(res, T))
+Base.getindex(r::ReadAs{T}, args...) where {T} = (res=r.db[args...]; isnothing(res) ? res : JSON3.read(res, T))
+Base.deleteat!(r::ReadAs, args...) = deleteat!(r.db, args...)
 
-
-#-----------------------------------------------------------------------------# set/get node(s)
+#-----------------------------------------------------------------------------# nodes
 function Base.setindex!(db::DB, props, id::Integer)
     execute(db, "INSERT INTO nodes VALUES(?, json(?))", (id, JSON3.write(props)))
     db
@@ -94,14 +96,23 @@ function Base.getindex(db::DB, id::Integer)
     res = single_result_execute(db, "SELECT props FROM nodes WHERE id = ?", (id,))
     isnothing(res) ? throw(BoundsError(db, id)) : res
 end
+function Base.deleteat!(db::DB, id::Integer)
+    execute(db, "DELETE FROM nodes WHERE id = ?", (id,))
+    execute(db, "DELETE FROM edges WHERE source = ? OR target = ?", (id, id))
+    db
+end
 
-#-----------------------------------------------------------------------------# set/get edge(s)
+#-----------------------------------------------------------------------------# edges
 function Base.setindex!(db::DB, props, i::Integer, j::Integer)
     execute(db, "INSERT INTO edges VALUES(?, ?, json(?))", (i, j, JSON3.write(props)))
     db
 end
 function Base.getindex(db::DB, i::Integer, j::Integer) 
     single_result_execute(db, "SELECT props FROM edges WHERE source = ? AND target = ? ", (i,j))
+end
+function Base.deleteat!(db::DB, i::Integer, j::Integer)
+    execute(db, "DELETE FROM edges WHERE source = ? AND target = ?", (i, j))
+    db
 end
 
 end
