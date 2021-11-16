@@ -108,7 +108,8 @@ Broadcast.broadcastable(db::DB) = Ref(db)
 
 function Base.iterate(db::DB, state = (length(db), 1))
     state[2] > state[1] && return nothing
-    single_result_execute(db, "SELECT props FROM nodes WHERE id = ?", (state[2],)), (state[1], state[2] + 1)
+    res = single_result_execute(db, "SELECT props FROM nodes WHERE id = ?", (state[2],))
+    Node(state[2], res), (state[1], state[2] + 1)
 end
 
 # #-----------------------------------------------------------------------------# ReadAs 
@@ -146,6 +147,16 @@ function Base.deleteat!(db::DB, id::Integer)
     db
 end
 
+function findnodes(db::DB; kw...)
+    param = join(map(collect(kw)) do kw 
+        k, v = kw
+        "json_extract(props, '\$.$k') = $v"
+    end, " AND ")
+
+    res = execute(db, "SELECT * FROM nodes WHERE $param")
+    isempty(res) ? nothing : [Node(row...) for row in res]
+end
+
 #-----------------------------------------------------------------------------# edges
 function Base.setindex!(db::DB, props, i::Integer, j::Integer)
     execute(db, "INSERT INTO edges VALUES(?, ?, json(?))", (i, j, JSON3.write(props)))
@@ -179,6 +190,16 @@ Base.getindex(db::DB, ::Colon, js::AbstractArray{<:Integer}) = filter!(!isnothin
 function Base.deleteat!(db::DB, i::Integer, j::Integer)
     execute(db, "DELETE FROM edges WHERE source = ? AND target = ?", (i, j))
     db
+end
+
+function findedges(db::DB; kw...)
+    param = join(map(collect(kw)) do kw 
+        k, v = kw
+        "json_extract(props, '\$.$k') = $v"
+    end, " AND ")
+
+    res = execute(db, "SELECT * FROM edges WHERE $param")
+    isempty(res) ? nothing : [Edge(row...) for row in res]
 end
 
 end

@@ -38,7 +38,7 @@ db[1, 2]
 # "{\"a\":1,\"b\":2}"
 ```
 
-### Querying Edges
+### Querying Edges Based on Node ID
 
 ```julia
 db[1, :]  # all outgoing edges from node 1
@@ -46,7 +46,16 @@ db[1, :]  # all outgoing edges from node 1
 db[1, 2:5]  # outgoing edges from node 1 to any of nodes 2,3,4,5 
 
 db[:, 1]  # all incoming edges to node 1
+```
 
+### Querying Based on Properties
+
+- multiple keyword args are a logical "AND"
+
+```julia
+SQLiteGraph.findnodes(db, x=1)
+
+SQLiteGraph.findedges(db, b=2)
 ```
 
 ## Attribution
