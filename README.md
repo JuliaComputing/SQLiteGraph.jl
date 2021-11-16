@@ -4,8 +4,9 @@ A Graph Database for Julia, built on top of [SQLite.jl](https://github.com/Julia
 
 ## Quickstart
 
-- *Nodes* must have "properties", even if `nothing`.
-- *Edges* must have "properties", even if `nothing`.
+- *Nodes* and *Edges* must have "properties", even if `nothing`.
+- The types returned by `getindex` (`Node`/`Edge`) have a `props` field that contains the JSON String.
+  - You can read it as whatever type you wish with `JSON3.read(node.props, T)`
 
 
 ### Creating a Graph Database
@@ -45,7 +46,7 @@ db[1, :]  # all outgoing edges from node 1
 
 db[1, 2:5]  # outgoing edges from node 1 to any of nodes 2,3,4,5 
 
-db[:, 1]  # all incoming edges to node 1
+db[:, 2]  # all incoming edges to node 2
 ```
 
 ### Querying Based on Properties
