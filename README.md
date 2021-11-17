@@ -63,11 +63,6 @@ SQLiteGraph.findedges(db, b=2)
 
 SQLiteGraph is **STRONGLY** influenced (much has been copied verbatim) from [https://github.com/dpapathanasiou/simple-graph](https://github.com/dpapathanasiou/simple-graph).  
 
-The differences here are minor, opinionated changes made by `@joshday`:
-
-- Node IDs are `Int`: 1, 2, 3...
-- Both `nodes` and `edges` tables have field `props`
-
 ## TODOs
 
 - Prepare SQL into compiled `SQLite.Stmt`s.

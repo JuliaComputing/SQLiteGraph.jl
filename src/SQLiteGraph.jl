@@ -4,7 +4,7 @@ using SQLite: SQLite
 import DBInterface: execute
 using JSON3: JSON3
 
-export DB, ReadAs
+export DB, Node, Edge, find_nodes, find_edges
 
 #-----------------------------------------------------------------------------# utils 
 read_sql(fn::String) = read(joinpath(@__DIR__, "sql", fn), String)
@@ -19,15 +19,24 @@ struct Node{T}
     props::T 
 end
 Node(id::Integer, props=nothing) = Node(id, props)
-Base.show(io::IO, o::Node) = (print(io, "Node($(o.id)) with props: "); show(io, o.props))
+function Base.show(io::IO, o::Node) 
+    print(io, "Node($(o.id)) with props: ")
+    print(io, o.props)
+end
 
 struct Edge{T} 
     source::Int 
     target::Int 
     props::T 
 end
-Base.show(io::IO, o::Edge) = (print(io, "Edge($(o.source) → $(o.target)) with props: "); show(io, o.props))
 Edge(source::Integer, target::Integer, props=nothing) = Edge(source, target, props)
+Edge(T::DataType, e::Edge{<:AbstractString}) = Edge(e.source, e.target, JSON3.read(e.props, T))
+Edge(e::Edge{<:AbstractString}, T::DataType) = Edge(e.source, e.target, JSON3.read(e.props, T))
+function Base.show(io::IO, o::Edge)
+    print(io, "Edge($(o.source) → $(o.target)) with props: ")
+    print(io, o.props)
+end
+
 
 #-----------------------------------------------------------------------------# DB
 """
@@ -61,6 +70,7 @@ struct DB
 
     function DB(file = ":memory:")
         db = SQLite.DB(file)
+        SQLite.@register db SQLite.regexp
         statements = [
             "CREATE TABLE IF NOT EXISTS nodes (
                 id INTEGER NOT NULL UNIQUE, 
@@ -146,8 +156,8 @@ function Base.deleteat!(db::DB, id::Integer)
     execute(db, "DELETE FROM edges WHERE source = ? OR target = ?", (id, id))
     db
 end
-
-function findnodes(db::DB; kw...)
+#-----------------------------------------------------------------------------# find_nodes
+function find_nodes(db::DB; kw...)
     param = join(map(collect(kw)) do kw 
         k, v = kw
         "json_extract(props, '\$.$k') = $v"
@@ -156,6 +166,11 @@ function findnodes(db::DB; kw...)
     res = execute(db, "SELECT * FROM nodes WHERE $param")
     isempty(res) ? nothing : [Node(row...) for row in res]
 end
+function find_nodes(db::DB, r::Regex)
+    res = execute(db, "SELECT * FROM nodes WHERE props REGEXP ?", (r.pattern,))
+    isempty(res) ? nothing : [Node(row...) for row in res]
+end
+
 
 #-----------------------------------------------------------------------------# edges
 function Base.setindex!(db::DB, props, i::Integer, j::Integer)
@@ -192,13 +207,18 @@ function Base.deleteat!(db::DB, i::Integer, j::Integer)
     db
 end
 
-function findedges(db::DB; kw...)
+#-----------------------------------------------------------------------------# find_edges
+function find_edges(db::DB; kw...)
     param = join(map(collect(kw)) do kw 
         k, v = kw
         "json_extract(props, '\$.$k') = $v"
     end, " AND ")
 
     res = execute(db, "SELECT * FROM edges WHERE $param")
+    isempty(res) ? nothing : [Edge(row...) for row in res]
+end
+function find_edges(db::DB, r::Regex)
+    res = execute(db, "SELECT * FROM edges WHERE props REGEXP ?", (r.pattern,))
     isempty(res) ? nothing : [Edge(row...) for row in res]
 end
 
