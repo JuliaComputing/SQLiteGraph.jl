@@ -42,7 +42,7 @@ end
 
 #-----------------------------------------------------------------------------# DB
 """
-    SimpleGraph.DB(file = ":memory")
+    DB(file = ":memory")
 
 Create a graph database (in memory by default).  Edge and node properties are saved in the database 
 as `TEXT` (see [https://www.sqlite.org/datatype3.html](https://www.sqlite.org/datatype3.html)) via `JSON3.write(props)`.
@@ -99,7 +99,7 @@ struct DB
     end
 end
 function Base.show(io::IO, db::DB) 
-    print(io, "SimpleGraphDB(\"$(db.sqlitedb.file)\") ($(n_nodes(db)) nodes, $(n_edges(db)) edges)")
+    print(io, "SQLiteGraph.DB(\"$(db.sqlitedb.file)\") ($(n_nodes(db)) nodes, $(n_edges(db)) edges)")
 end
 
 execute(db::DB, args...; kw...) = execute(db.sqlitedb, args...; kw...)
