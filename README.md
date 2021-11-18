@@ -74,5 +74,4 @@ SQLiteGraph is **STRONGLY** influenced (much has been copied verbatim) from [htt
 ## TODOs
 
 - Prepare SQL into compiled `SQLite.Stmt`s.
-- querying
-- traverse
+- traversal algorithms.
