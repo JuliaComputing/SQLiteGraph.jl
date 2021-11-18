@@ -54,9 +54,17 @@ db[:, 2]  # all incoming edges to node 2
 - multiple keyword args are a logical "AND"
 
 ```julia
-SQLiteGraph.findnodes(db, x=1)
+find_nodes(db, x=1)
 
-SQLiteGraph.findedges(db, b=2)
+find_edges(db, b=2)
+```
+
+- You can also query based on Regex matches of the `TEXT` properties:
+
+```julia
+find_nodes(db, r"x")
+
+find_edges(db, r"\"b\":2")
 ```
 
 ## Attribution

@@ -14,6 +14,7 @@ function single_result_execute(db, stmt, args...)
     isempty(ex) ? nothing : values(first(ex))[1]
 end
 
+#-----------------------------------------------------------------------------# Node
 struct Node{T} 
     id::Int 
     props::T 
@@ -24,6 +25,7 @@ function Base.show(io::IO, o::Node)
     print(io, o.props)
 end
 
+#-----------------------------------------------------------------------------# Edge
 struct Edge{T} 
     source::Int 
     target::Int 
@@ -49,11 +51,11 @@ as `TEXT` (see [https://www.sqlite.org/datatype3.html](https://www.sqlite.org/da
 
 - `nodes`
   - `id INTEGER NOT NULL UNIQUE`
-  - `props TEXT` (JSON.write)
+  - `props TEXT` (via JSON3.write)
 - `edges`
   - `source INTEGER`
   - `target INTEGER`
-  - `props TEXT` (JSON.write)
+  - `props TEXT` (via JSON3.write)
 
 # Examples 
 
