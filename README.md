@@ -15,7 +15,7 @@ A Graph Database for Julia, built on top of [SQLite.jl](https://github.com/Julia
 using SQLiteGraph
 
 db = DB()
-# SimpleGraphDB(":memory:") (0 nodes, 0 edges)
+# SQLiteGraph.DB(":memory:") (0 nodes, 0 edges)
 ```
 
 ### Adding Nodes
