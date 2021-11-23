@@ -20,8 +20,8 @@ db = DB()
   - E.g. Nodes 1, 2, and 3: `db[1:3]`
   - E.g. Edges from 1 to 2 or 3: `db[1, 2:3]`
   - Returned objects are `Node` or `Edge` (or generator if multiple objects queried):
-  - `Node` and `Edge` are simple structs.  By default, `T` will be `String`.  
-    - To read `props` into Julia as a specific type, use `JSON3.read(node.props, MyType)`.
+  - `Node` and `Edge` are simple structs.  
+    - By default, `T` will be `String`.  You can set `T` on construction of the `DB` e.g. `DB(Dict{String,String})`.
   ```julia
   struct Node{T} 
       id::Int 

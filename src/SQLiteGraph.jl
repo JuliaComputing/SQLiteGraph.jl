@@ -18,8 +18,9 @@ end
 struct Node{T} 
     id::Int 
     props::T 
+    Node(id::Integer, props=nothing) = new{typeof(props)}(id, props)
 end
-Node(id::Integer, props=nothing) = Node(id, props)
+
 function Base.show(io::IO, o::Node) 
     print(io, "Node($(o.id)) with props: ")
     print(io, o.props)
@@ -30,8 +31,10 @@ struct Edge{T}
     source::Int 
     target::Int 
     props::T 
+    function Edge(source::Integer, target::Integer, props=nothing) 
+        new{typeof(props)}(source, target, props)
+    end
 end
-Edge(source::Integer, target::Integer, props=nothing) = Edge(source, target, props)
 Edge(T::DataType, e::Edge{<:AbstractString}) = Edge(e.source, e.target, JSON3.read(e.props, T))
 Edge(e::Edge{<:AbstractString}, T::DataType) = Edge(e.source, e.target, JSON3.read(e.props, T))
 function Base.show(io::IO, o::Edge)
@@ -42,10 +45,11 @@ end
 
 #-----------------------------------------------------------------------------# DB
 """
-    DB(file = ":memory")
+    DB(file = ":memory", T = String)
 
-Create a graph database (in memory by default).  Edge and node properties are saved in the database 
-as `TEXT` (see [https://www.sqlite.org/datatype3.html](https://www.sqlite.org/datatype3.html)) via `JSON3.write(props)`.
+Create a graph database (in memory by default).  
+- Node and edge properties are saved in the database as `TEXT` (see [https://www.sqlite.org/datatype3.html](https://www.sqlite.org/datatype3.html)) via `JSON3.write(props)`.
+- Node and edge properties will be interpreted as `T` in Julia: `JSON3.read(props, T)`
 
 # Interal Table Structure
 
@@ -67,10 +71,10 @@ as `TEXT` (see [https://www.sqlite.org/datatype3.html](https://www.sqlite.org/da
 
     db[1,2] = (z = 4)   # edge from 1 → 2
 """
-struct DB
+struct DB{T}
     sqlitedb::SQLite.DB
 
-    function DB(file = ":memory:")
+    function DB(file::String = ":memory:", T::Type = String)
         db = SQLite.DB(file)
         SQLite.@register db SQLite.regexp
         statements = [
@@ -95,11 +99,14 @@ struct DB
         map(statements) do x 
             execute(db, x)
         end
-        new(db)
+        new{T}(db)
     end
 end
-function Base.show(io::IO, db::DB) 
-    print(io, "SQLiteGraph.DB(\"$(db.sqlitedb.file)\") ($(n_nodes(db)) nodes, $(n_edges(db)) edges)")
+DB(T::Type, file::String = ":memory:") = DB(file, T)
+DB(T::Type, db::DB) = DB(db.sqlitedb, T)
+DB(db::DB, T::Type) = DB(T, db)
+function Base.show(io::IO, db::DB{T}) where {T} 
+    print(io, "SQLiteGraph.DB{$T}(\"$(db.sqlitedb.file)\") ($(n_nodes(db)) nodes, $(n_edges(db)) edges)")
 end
 
 execute(db::DB, args...; kw...) = execute(db.sqlitedb, args...; kw...)
