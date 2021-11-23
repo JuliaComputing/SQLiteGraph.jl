@@ -93,7 +93,7 @@ find_nodes(db, r"x")
 find_edges(db, r"\"b\":2")
 ```
 
-## Attribution
+## ✨ Attribution ✨
 
 SQLiteGraph is **STRONGLY** influenced (much has been copied verbatim) from [https://github.com/dpapathanasiou/simple-graph](https://github.com/dpapathanasiou/simple-graph).  
 
