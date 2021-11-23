@@ -151,7 +151,7 @@ end
 Base.getindex(db::DB, ids::AbstractArray{<:Integer}) = getindex.(db, ids)
 function Base.getindex(db::DB, ::Colon)
     res = execute(db, "SELECT props from nodes")
-    [Node(i,row.props) for (i,row) in enumerate(res)]
+    (Node(i,row.props) for (i,row) in enumerate(res))
 end
 function Base.deleteat!(db::DB, id::Integer)
     execute(db, "DELETE FROM nodes WHERE id = ?", (id,))
@@ -166,11 +166,11 @@ function find_nodes(db::DB; kw...)
     end, " AND ")
 
     res = execute(db, "SELECT * FROM nodes WHERE $param")
-    isempty(res) ? nothing : [Node(row...) for row in res]
+    isempty(res) ? nothing : (Node(row...) for row in res)
 end
 function find_nodes(db::DB, r::Regex)
     res = execute(db, "SELECT * FROM nodes WHERE props REGEXP ?", (r.pattern,))
-    isempty(res) ? nothing : [Node(row...) for row in res]
+    isempty(res) ? nothing : (Node(row...) for row in res)
 end
 
 
@@ -191,15 +191,15 @@ function Base.getindex(db::DB, is::AbstractArray{<:Integer}, js::AbstractArray{<
 end
 function Base.getindex(db::DB, i::Integer, ::Colon)
     res = execute(db, "SELECT * FROM edges WHERE source=?", (i,))
-    isempty(res) ? nothing : [Edge(row...) for row in res]
+    isempty(res) ? nothing : (Edge(row...) for row in res)
 end
 function Base.getindex(db::DB, ::Colon, j::Integer)
     res = execute(db, "SELECT * FROM edges WHERE target=?", (j,))
-    isempty(res) ? nothing : [Edge(row...) for row in res]
+    isempty(res) ? nothing : (Edge(row...) for row in res)
 end
 function Base.getindex(db::DB, ::Colon, ::Colon)
     res = execute(db, "SELECT * from edges")
-    isempty(res) ? nothing : [Edge(row...) for row in res]
+    isempty(res) ? nothing : (Edge(row...) for row in res)
 end
 Base.getindex(db::DB, is::AbstractArray{<:Integer}, ::Colon) = filter!(!isnothing, getindex.(db, is, :))
 Base.getindex(db::DB, ::Colon, js::AbstractArray{<:Integer}) = filter!(!isnothing, getindex.(db, :, js))
@@ -217,11 +217,11 @@ function find_edges(db::DB; kw...)
     end, " AND ")
 
     res = execute(db, "SELECT * FROM edges WHERE $param")
-    isempty(res) ? nothing : [Edge(row...) for row in res]
+    isempty(res) ? nothing : (Edge(row...) for row in res)
 end
 function find_edges(db::DB, r::Regex)
     res = execute(db, "SELECT * FROM edges WHERE props REGEXP ?", (r.pattern,))
-    isempty(res) ? nothing : [Edge(row...) for row in res]
+    isempty(res) ? nothing : (Edge(row...) for row in res)
 end
 
 end
