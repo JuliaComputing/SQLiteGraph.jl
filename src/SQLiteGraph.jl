@@ -6,32 +6,32 @@ using JSON3: JSON3
 
 export DB, Node, Edge, find_nodes, find_edges
 
-#-----------------------------------------------------------------------------# utils 
+#-----------------------------------------------------------------------------# utils
 read_sql(fn::String) = read(joinpath(@__DIR__, "sql", fn), String)
 
-function single_result_execute(db, stmt, args...) 
+function single_result_execute(db, stmt, args...)
     ex = execute(db, stmt, args...)
     isempty(ex) ? nothing : values(first(ex))[1]
 end
 
 #-----------------------------------------------------------------------------# Node
-struct Node{T} 
-    id::Int 
-    props::T 
+struct Node{T}
+    id::Int
+    props::T
     Node(id::Integer, props=nothing) = new{typeof(props)}(id, props)
 end
 
-function Base.show(io::IO, o::Node) 
+function Base.show(io::IO, o::Node)
     print(io, "Node($(o.id)) with props: ")
     print(io, o.props)
 end
 
 #-----------------------------------------------------------------------------# Edge
-struct Edge{T} 
-    source::Int 
-    target::Int 
-    props::T 
-    function Edge(source::Integer, target::Integer, props=nothing) 
+struct Edge{T}
+    source::Int
+    target::Int
+    props::T
+    function Edge(source::Integer, target::Integer, props=nothing)
         new{typeof(props)}(source, target, props)
     end
 end
@@ -47,7 +47,7 @@ end
 """
     DB(file = ":memory", T = String)
 
-Create a graph database (in memory by default).  
+Create a graph database (in memory by default).
 - Node and edge properties are saved in the database as `TEXT` (see [https://www.sqlite.org/datatype3.html](https://www.sqlite.org/datatype3.html)) via `JSON3.write(props)`.
 - Node and edge properties will be interpreted as `T` in Julia: `JSON3.read(props, T)`
 
@@ -61,7 +61,7 @@ Create a graph database (in memory by default).
   - `target INTEGER`
   - `props TEXT` (via JSON3.write)
 
-# Examples 
+# Examples
 
     db = DB()
 
@@ -79,7 +79,7 @@ struct DB{T}
         SQLite.@register db SQLite.regexp
         statements = [
             "CREATE TABLE IF NOT EXISTS nodes (
-                id INTEGER NOT NULL UNIQUE, 
+                id INTEGER NOT NULL UNIQUE,
                 props TEXT,
                 UNIQUE(id) ON CONFLICT REPLACE
             );",
@@ -96,7 +96,7 @@ struct DB{T}
             "CREATE INDEX IF NOT EXISTS target_idx ON edges(target);"
         ]
         # workaround because sqlite won't run multiple statements at once
-        map(statements) do x 
+        map(statements) do x
             execute(db, x)
         end
         new{T}(db)
@@ -105,7 +105,7 @@ end
 DB(T::Type, file::String = ":memory:") = DB(file, T)
 DB(T::Type, db::DB) = DB(db.sqlitedb, T)
 DB(db::DB, T::Type) = DB(T, db)
-function Base.show(io::IO, db::DB{T}) where {T} 
+function Base.show(io::IO, db::DB{T}) where {T}
     print(io, "SQLiteGraph.DB{$T}(\"$(db.sqlitedb.file)\") ($(n_nodes(db)) nodes, $(n_edges(db)) edges)")
 end
 
@@ -131,14 +131,14 @@ function Base.iterate(db::DB, state = (length(db), 1))
     Node(state[2], res), (state[1], state[2] + 1)
 end
 
-# #-----------------------------------------------------------------------------# ReadAs 
+# #-----------------------------------------------------------------------------# ReadAs
 # struct ReadAs{T}
-#     db::DB 
+#     db::DB
 # end
 # ReadAs(db::DB, T::DataType=Dict{String,Any}) = ReadAs{T}(db)
 # Base.show(io::IO, r::ReadAs{T}) where {T} = (print(io, "ReadAs{$T}: "); print(io, r.db))
 # Base.setindex!(r::ReadAs, args...) = setindex!(r.db, args...)
-# function Base.getindex(r::ReadAs{T}, args...) where {T} 
+# function Base.getindex(r::ReadAs{T}, args...) where {T}
 #     res=r.db[args...]; isnothing(res) ? res : JSON3.read.(res, T)
 # end
 
@@ -167,7 +167,7 @@ function Base.deleteat!(db::DB, id::Integer)
 end
 #-----------------------------------------------------------------------------# find_nodes
 function find_nodes(db::DB; kw...)
-    param = join(map(collect(kw)) do kw 
+    param = join(map(collect(kw)) do kw
         k, v = kw
         "json_extract(props, '\$.$k') = $v"
     end, " AND ")
@@ -186,7 +186,7 @@ function Base.setindex!(db::DB, props, i::Integer, j::Integer)
     execute(db, "INSERT INTO edges VALUES(?, ?, json(?))", (i, j, JSON3.write(props)))
     db
 end
-function Base.getindex(db::DB, i::Integer, j::Integer) 
+function Base.getindex(db::DB, i::Integer, j::Integer)
     res = single_result_execute(db, "SELECT props FROM edges WHERE source = ? AND target = ? ", (i,j))
     isnothing(res) ? res : Edge(i, j, res)
 end
@@ -218,7 +218,7 @@ end
 
 #-----------------------------------------------------------------------------# find_edges
 function find_edges(db::DB; kw...)
-    param = join(map(collect(kw)) do kw 
+    param = join(map(collect(kw)) do kw
         k, v = kw
         "json_extract(props, '\$.$k') = $v"
     end, " AND ")

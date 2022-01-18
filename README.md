@@ -20,18 +20,18 @@ db = DB()
   - E.g. Nodes 1, 2, and 3: `db[1:3]`
   - E.g. Edges from 1 to 2 or 3: `db[1, 2:3]`
   - Returned objects are `Node` or `Edge` (or generator if multiple objects queried):
-  - `Node` and `Edge` are simple structs.  
+  - `Node` and `Edge` are simple structs.
     - By default, `T` will be `String`.  You can set `T` on construction of the `DB` e.g. `DB(Dict{String,String})`.
   ```julia
-  struct Node{T} 
-      id::Int 
-      props::T 
+  struct Node{T}
+      id::Int
+      props::T
   end
 
-  struct Edge{T} 
-      source::Int 
-      target::Int 
-      props::T 
+  struct Edge{T}
+      source::Int
+      target::Int
+      props::T
   end
   ```
 
@@ -48,15 +48,15 @@ db = DB()
 
 ```julia
 # properties must be `JSON3.write`-able (saved in the SQLite database as TEXT)
-db[1] = (x=1, y=2) 
+db[1] = (x=1, y=2)
 
 db[2] = (x=1, y=10)
 
-db[1] 
+db[1]
 # "{\"x\":1,\"y\":2}"
 ```
 
-### Adding Edges 
+### Adding Edges
 
 ```julia
 db[1, 2] = (a=1, b=2)
@@ -65,12 +65,16 @@ db[1, 2]
 # "{\"a\":1,\"b\":2}"
 ```
 
+## Querying
+
+
+
 ### Querying Edges Based on Node ID
 
 ```julia
 db[1, :]  # all outgoing edges from node 1
 
-db[1, 2:5]  # outgoing edges from node 1 to any of nodes 2,3,4,5 
+db[1, 2:5]  # outgoing edges from node 1 to any of nodes 2,3,4,5
 
 db[:, 2]  # all incoming edges to node 2
 ```
@@ -95,7 +99,7 @@ find_edges(db, r"\"b\":2")
 
 ## ✨ Attribution ✨
 
-SQLiteGraph is **STRONGLY** influenced (much has been copied verbatim) from [https://github.com/dpapathanasiou/simple-graph](https://github.com/dpapathanasiou/simple-graph).  
+SQLiteGraph is **STRONGLY** influenced (much has been copied verbatim) from [https://github.com/dpapathanasiou/simple-graph](https://github.com/dpapathanasiou/simple-graph).
 
 ## TODOs
 
