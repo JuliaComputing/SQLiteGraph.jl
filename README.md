@@ -1,3 +1,7 @@
+[![Build status](https://github.com/joshday/SQLiteGraph.jl/workflows/CI/badge.svg)](https://github.com/joshday/SQLiteGraph.jl/actions?query=workflow%3ACI+branch%3Amain)
+[![Codecov](https://codecov.io/gh/joshday/SQLiteGraph.jl/branch/main/graph/badge.svg)](https://codecov.io/gh/joshday/SQLiteGraph.jl)
+
+
 # SQLiteGraph
 
 A Graph Database for Julia, built on top of [SQLite.jl](https://github.com/JuliaDatabases/SQLite.jl).
