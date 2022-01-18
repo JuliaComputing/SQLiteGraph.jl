@@ -7,8 +7,6 @@ using JSON3: JSON3
 export DB, Node, Edge, find_nodes, find_edges
 
 #-----------------------------------------------------------------------------# utils
-read_sql(fn::String) = read(joinpath(@__DIR__, "sql", fn), String)
-
 function single_result_execute(db, stmt, args...)
     ex = execute(db, stmt, args...)
     isempty(ex) ? nothing : values(first(ex))[1]
@@ -76,8 +74,8 @@ struct DB{T}
 
     function DB(file::String = ":memory:", T::Type = String)
         db = SQLite.DB(file)
-        SQLite.@register db SQLite.regexp
-        statements = [
+        SQLite.@register db SQLite.regexp  # regular expressions used in `find_nodes` & `find_edges`
+        foreach(x -> execute(db, x), [
             "CREATE TABLE IF NOT EXISTS nodes (
                 id INTEGER NOT NULL UNIQUE,
                 props TEXT,
@@ -94,11 +92,7 @@ struct DB{T}
             );",
             "CREATE INDEX IF NOT EXISTS source_idx ON edges(source);",
             "CREATE INDEX IF NOT EXISTS target_idx ON edges(target);"
-        ]
-        # workaround because sqlite won't run multiple statements at once
-        map(statements) do x
-            execute(db, x)
-        end
+        ])
         new{T}(db)
     end
 end
