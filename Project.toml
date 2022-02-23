@@ -5,13 +5,14 @@ version = "0.1.0"
 
 [deps]
 DBInterface = "a10d1c49-ce27-4219-8d33-6db1a4562965"
+EasyConfig = "acab07b0-f158-46d4-8913-50acef6d41fe"
 JSON3 = "0f8b85d8-7281-11e9-16c2-39a750bddbf1"
 SQLite = "0aa819cd-b072-5ff4-a722-6bc24af294d9"
 
 [compat]
+DBInterface = "2"
 JSON3 = "1"
 SQLite = "1"
-DBInterface = "2"
 julia = "1"
 
 [extras]

@@ -13,7 +13,15 @@ using SQLiteGraph
 
 db = DB()
 # SQLiteGraph.DB(":memory:") (0 nodes, 0 edges)
+
+db[1] = Config(type="person", name="Fred")
+
+db[2] = Config(type="person", name="Robert Ford")
+
+db[2, 1] = Config(shot=true)
 ```
+
+
 
 -  Nodes and edges must have "properties" (something that is `JSON3.write`-able), even if its `nothing`.
 - Nodes must have an id (`Int`) in ascending order starting with `1`.
@@ -25,17 +33,17 @@ db = DB()
   - E.g. Edges from 1 to 2 or 3: `db[1, 2:3]`
   - Returned objects are `Node` or `Edge` (or generator if multiple objects queried):
   - `Node` and `Edge` are simple structs.
-    - By default, `T` will be `String`.  You can set `T` on construction of the `DB` e.g. `DB(Dict{String,String})`.
+
   ```julia
-  struct Node{T}
+  struct Node
       id::Int
-      props::T
+      props::Config
   end
 
-  struct Edge{T}
+  struct Edge
       source::Int
       target::Int
-      props::T
+      props::config
   end
   ```
 
@@ -57,7 +65,9 @@ db[1] = (x=1, y=2)
 db[2] = (x=1, y=10)
 
 db[1]
-# "{\"x\":1,\"y\":2}"
+# Node 1
+#     • y: 2
+#     • x: 1
 ```
 
 ### Adding Edges
@@ -66,12 +76,18 @@ db[1]
 db[1, 2] = (a=1, b=2)
 
 db[1, 2]
-# "{\"a\":1,\"b\":2}"
+# Edge 1 → 2
+#     • a: 1
+#     • b: 2
 ```
 
-## Querying
+## Iteration
 
-
+```julia
+for node in eachnode(db)
+    println(getfield(node, :id))
+end
+```
 
 ### Querying Edges Based on Node ID
 
