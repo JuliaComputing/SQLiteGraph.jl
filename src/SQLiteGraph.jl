@@ -10,7 +10,7 @@ export DB, Node, Edge
 #-----------------------------------------------------------------------------# utils
 function single_result_execute(db, stmt, args...)
     ex = execute(db, stmt, args...)
-    isempty(ex) ? nothing : values(first(ex))[1]
+    isempty(ex) ? nothing : first(first(ex))
 end
 
 function print_props(io::IO, o::Config)
@@ -22,19 +22,6 @@ end
 
 
 #-----------------------------------------------------------------------------# Model
-# Nodes describe entities (discrete objects) of a domain.
-# Nodes can have zero or more labels to define (classify) what kind of nodes they are.
-# Nodes and relationships can have properties (key-value pairs), which further describe them.
-
-# Relationships describes a connection between a source node and a target node.
-# Relationships always has a direction (one direction).
-# Relationships must have a type (one type) to define (classify) what type of relationship they are.
-
-# Nouns-nodes, Adjectives-properties, Verbs-relationship, Adverbs-properties on relationship
-
-# Property Graph Model on page 4
-# https://s3.amazonaws.com/artifacts.opencypher.org/openCypher9.pdf
-
 struct Node
     id::Int
     labels::Vector{String}
@@ -55,6 +42,7 @@ function Base.show(io::IO, o::Node)
     end
 end
 args(n::Node) = (n.id, join(n.labels, ';'), JSON3.write(n.props))
+Base.:(==)(a::Node, b::Node) = all(getfield(a,f) == getfield(b,f) for f in fieldnames(Node))
 
 
 struct Edge
@@ -77,7 +65,9 @@ function Base.show(io::IO, o::Edge)
         printstyled(io, join(keys(o.props), ", "), color=:light_green)
     end
 end
-args(e::Edge) = (e.source, e.target, join(e.type, ';'), JSON3.write(e.props))
+args(e::Edge) = (e.source, e.target, e.type, JSON3.write(e.props))
+Base.:(==)(a::Edge, b::Edge) = all(getfield(a,f) == getfield(b,f) for f in fieldnames(Edge))
+
 
 #-----------------------------------------------------------------------------# DB
 struct DB
@@ -103,11 +93,13 @@ struct DB
                 type TEXT NOT NULL,
                 props TEXT,
                 FOREIGN KEY(source) REFERENCES nodes(id),
-                FOREIGN KEY(target) REFERENCES nodes(id)
+                FOREIGN KEY(target) REFERENCES nodes(id),
+                UNIQUE(source, target, type)
             );",
             "CREATE INDEX IF NOT EXISTS source_idx ON edges(source);",
             "CREATE INDEX IF NOT EXISTS target_idx ON edges(target);",
             "CREATE INDEX IF NOT EXISTS type_idx ON edges(type);",
+            "CREATE INDEX IF NOT EXISTS source_target_type_idx ON edges(source, target, type);"
         ])
         new(db)
     end
@@ -125,92 +117,68 @@ Base.length(db::DB) = n_nodes(db)
 Base.size(db::DB) = (n_nodes=n_nodes(db), n_edges=n_edges(db))
 
 #-----------------------------------------------------------------------------# nodes
+function Base.push!(db::DB, node::Node; upsert=false)
+    upsert ?
+        execute(db, "INSERT INTO nodes VALUES(?, ?, json(?)) ON CONFLICT(id) DO UPDATE SET labels=excluded.labels, props=excluded.props", args(node)) :
+        execute(db, "INSERT INTO nodes VALUES(?, ?, json(?))", args(node))
+    db
+end
+
 function Base.getindex(db::DB, id::Integer)
     res = execute(db, "SELECT * FROM nodes WHERE id = ?", (id,))
-    isempty(res) ? throw(BoundsError(db, id)) : Node(first(res))
+    isempty(res) ? error("Node $id does not exist.") : Node(first(res))
+end
+function Base.getindex(db::DB, ::Colon)
+    res = execute(db, "SELECT * FROM nodes")
+    isempty(res) ? error("No nodes exist yet.") : (Node(row) for row in res)
 end
 
-function Base.push!(db::DB, node::Node)
-    res = execute(db, "SELECT * FROM nodes WHERE id=?", (node.id,))
-    isempty(res) ?
-        execute(db, "INSERT INTO nodes VALUES(?, ?, json(?))", args(node)) :
-        error("Node with id=$(node.id) already exists in graph.  Use `insert!` to overwrite.")
+
+#-----------------------------------------------------------------------------# edges
+function Base.push!(db::DB, edge::Edge; upsert=false)
+    i, j = edge.source, edge.target
+    check = single_result_execute(db, "SELECT COUNT(*) FROM nodes WHERE id=? OR id=?", (i, j))
+    (isnothing(check) || check < 2) && error("Nodes $i and $j must exist in order for an edge to connect them.")
+    upsert ?
+        execute(db, "INSERT INTO edges VALUES(?, ?, ?, json(?)) ON CONFLICT(source,target,type) DO UPDATE SET props=excluded.props", args(edge)) :
+        execute(db, "INSERT INTO edges VALUES(?, ?, ?, json(?))", args(edge))
     db
 end
-function Base.insert!(db::DB, node::Node)
-    execute(db, "INSERT INTO nodes VALUES(?, ?, json(?)) ON CONFLICT(id) DO UPDATE SET labels=excluded.labels, props=excluded.props", args(node))
-    db
+
+function Base.getindex(db::DB, i::Integer, j::Integer, type::AbstractString)
+    res = execute(db, "SELECT * FROM edges WHERE source=? AND target=? AND type=?", (i,j,type))
+    isempty(res) ? error("Edge $i → $type → $j does not exist.") : Edge(first(res))
+end
+function Base.getindex(db::DB, i::Integer, j::Integer, ::Colon = Colon())
+    res = execute(db, "SELECT * FROM edges WHERE source=? AND target=?", (i, j))
+    isempty(res) ? error("No edges connect nodes $i → $j.") : (Edge(row) for row in res)
+end
+
+function Base.getindex(db::DB, ::Colon, j::Integer, type::AbstractString)
+    res = execute(db, "SELECT * FROM edges WHERE target=? AND type=?", (j, type))
+    isempty(res) ? error("No incoming edges $type → $j") : (Edge(row) for row in res)
+end
+function Base.getindex(db::DB, i::Colon, j::Integer, ::Colon=Colon())
+    res = execute(db, "SELECT * FROM edges WHERE target=?", (j,))
+    isempty(res) ? error("No incoming edges into node $j") : (Edge(row) for row in res)
+end
+
+function Base.getindex(db::DB, i::Integer, ::Colon, type::AbstractString)
+    res = execute(db, "SELECT * FROM edges WHERE source=? AND type=?", (i,type))
+    isempty(res) ? error("No outgoing edges $type → $i") : (Edge(row) for row in res)
+end
+function Base.getindex(db::DB, i::Integer, ::Colon, ::Colon=Colon())
+    res = execute(db, "SELECT * FROM edges WHERE source=?", (i,))
+    isempty(res) ? error("No outgoing edges from node $i") : (Edge(row) for row in res)
 end
 
 
+#-----------------------------------------------------------------------------# interfaces
+Base.length(db::DB) = n_nodes(db)
+Base.size(db::DB) = (nodes=n_nodes(db), edges=n_edges(db))
+Base.lastindex(db::DB) = length(db)
+Base.axes(db::DB, i) = size(db)[i]
 
-
-# #-----------------------------------------------------------------------------# get/set nodes
-# function Base.setindex!(db::DB, props, id::Integer)
-#     id ≤ length(db) + 1 || error("Cannot add node ID=$id to DB with $(length(db)) nodes.  IDs must be added sequentially.")
-#     execute(db, "INSERT INTO nodes VALUES(?, json(?))", (id, JSON3.write(props)))
-#     db
-# end
-# function Base.getindex(db::DB, id::Integer)
-#     res = single_result_execute(db, "SELECT props FROM nodes WHERE id = ?", (id,))
-#     isnothing(res) ? throw(BoundsError(db, id)) : Node(id, res)
-# end
-# Base.getindex(db::DB, ids::AbstractArray{<:Integer}) = (getindex(db, id) for id in ids)
-# function Base.getindex(db::DB, ::Colon)
-#     res = execute(db, "SELECT props from nodes")
-#     (Node(i, row.props) for (i,row) in enumerate(res))
-# end
-# function Base.deleteat!(db::DB, id::Integer)
-#     execute(db, "DELETE FROM nodes WHERE id = ?", (id,))
-#     execute(db, "DELETE FROM edges WHERE source = ? OR target = ?", (id, id))
-#     db
-# end
-
-# #-----------------------------------------------------------------------------# get/set edges
-# function Base.setindex!(db::DB, props, i::Integer, j::Integer)
-#     execute(db, "INSERT INTO edges VALUES(?, ?, json(?))", (i, j, JSON3.write(props)))
-#     db
-# end
-# function Base.getindex(db::DB, i::Integer, j::Integer)
-#     res = single_result_execute(db, "SELECT props FROM edges WHERE source = ? AND target = ? ", (i,j))
-#     isnothing(res) ? res : Edge(i, j, res)
-# end
-# Base.getindex(db::DB, i::Integer, js::AbstractArray{<:Integer}) = filter!(!isnothing, getindex.(db, i, js))
-# Base.getindex(db::DB, is::AbstractArray{<:Integer}, j::Integer) = filter!(!isnothing, getindex.(db, is, j))
-# function Base.getindex(db::DB, is::AbstractArray{<:Integer}, js::AbstractArray{<:Integer})
-#     res = vcat((getindex(db, i, js) for i in is)...)
-#     isempty(res) ? nothing : res
-# end
-# function Base.getindex(db::DB, i::Integer, ::Colon)
-#     res = execute(db, "SELECT * FROM edges WHERE source=?", (i,))
-#     isempty(res) ? nothing : (Edge(row...) for row in res)
-# end
-# function Base.getindex(db::DB, ::Colon, j::Integer)
-#     res = execute(db, "SELECT * FROM edges WHERE target=?", (j,))
-#     isempty(res) ? nothing : (Edge(row...) for row in res)
-# end
-# function Base.getindex(db::DB, ::Colon, ::Colon)
-#     res = execute(db, "SELECT * from edges")
-#     isempty(res) ? nothing : (Edge(row...) for row in res)
-# end
-# Base.getindex(db::DB, is::AbstractArray{<:Integer}, ::Colon) = filter!(!isnothing, getindex.(db, is, :))
-# Base.getindex(db::DB, ::Colon, js::AbstractArray{<:Integer}) = filter!(!isnothing, getindex.(db, :, js))
-
-# function Base.deleteat!(db::DB, i::Integer, j::Integer)
-#     execute(db, "DELETE FROM edges WHERE source = ? AND target = ?", (i, j))
-#     db
-# end
-
-# #-----------------------------------------------------------------------------# interfaces
-# Base.length(db::DB) = n_nodes(db)
-# Base.size(db::DB) = (nodes=n_nodes(db), edges=n_edges(db))
-# Base.lastindex(db::DB) = length(db)
-# Base.axes(db::DB, i) = size(db)[i]
-
-# Broadcast.broadcastable(db::DB) = Ref(db)
-
-# #-----------------------------------------------------------------------------# iterators
-# eachnode(db::DB) = (db[i] for i in 1:length(db))
-# eachedge(db::DB) = (Edge(row...) for row in execute(db, "SELECT * from edges"))
+Broadcast.broadcastable(db::DB) = Ref(db)
 
 end

@@ -6,7 +6,19 @@
 
 A Graph Database for Julia, built on top of [SQLite.jl](https://github.com/JuliaDatabases/SQLite.jl).
 
+<br><br>
+
 ## Quickstart
+
+### Definitions
+
+SQLiteGraph.jl uses the [Property Graph Model of the Cypher Query Language (PDF)](https://s3.amazonaws.com/artifacts.opencypher.org/openCypher9.pdf).
+
+- A **Node** describes a discrete object in a domain.
+- Nodes can have 0+ **labels** that classify what kind of node they are.
+- An **Edge** describes a directional relationship between nodes.
+- An edge must have a **type** that classifies the relationship.
+- Both edges and nodes can have additional key-value **properties** that provide further information.
 
 ```julia
 using SQLiteGraph
