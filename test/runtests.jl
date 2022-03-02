@@ -2,31 +2,62 @@ using SQLiteGraph
 using Test
 using JSON3
 
-@testset "SQLiteGraph.jl" begin
-    db = DB()
+#-----------------------------------------------------------------------------# setup
+db = DB()
 
-    n1 = Node(1, "label 1", "label 2"; prop1=1, prop2=2)
-    n1_2 = Node(1, "label 3", prop3=3)
-    n2 = Node(2)
-
-    @testset "Adding Nodes" begin
-
-        push!(db, n1)
-        @test db[1] == n1
-        @test_throws Exception push!(db, n1)
-
-
-        push!(db, n1_2; upsert=true)
-        @test db[1] == n1_2
+#-----------------------------------------------------------------------------# Nodes
+@testset "Nodes" begin
+    @testset "Round Trips" begin
+        for n in [
+                Node(1),
+                Node(2, "lab"),
+                Node(3, "lab1", "lab2"),
+                Node(4, "lab"; x=1),
+                Node(5, "lab1", "lab2"; x=1, y=2)
+            ]
+            insert!(db, n)
+            @test db[n.id] == n
+            @test_throws Exception insert!(db, n)
+        end
     end
-    @testset "Adding Edges" begin
-        push!(db, Node(2))
-        e1 = Edge(1, 2, "type")
-        push!(db, e1)
-        @test e1 == db[1,2,"type"]
+    @testset "replace!" begin
+        replace!(db, Node(1, "lab"))
+        @test db[1].labels == ["lab"]
     end
-    @testset "Querying Nodes" begin
-        @test length(collect(db[:])) == 2
-        @test db[1] == n1_2
+    @testset "simple query" begin
+        q = db[:]
+        for (i,n) in enumerate(q)
+            @test n.id == i
+        end
+        @test length(collect(db[:])) == 5
+    end
+end
+
+#-----------------------------------------------------------------------------# Edges
+@testset "Edges" begin
+    @testset "Round Trips" begin
+        for e in [
+                Edge(1,2,"type"),
+                Edge(1,3,"type"; x=1),
+                Edge(1,4,"type 2"; x=1,y=2,z=3)
+            ]
+            insert!(db, e)
+            @test db[e.source, e.target, e.type] == e
+            @test_throws Exception insert!(db, e)
+        end
+    end
+    @testset "replace!" begin
+        replace!(db, Edge(1,2,"type"; x=1))
+        @test db[1,2,"type"].props.x == 1
+    end
+    @testset "simple query" begin
+        @test db[1,2,"type"] == Edge(1,2,"type"; x=1)
+        @test length(collect(db[1,2,:])) == 1
+        @test length(collect(db[1,:,"type"])) == 2
+        @test length(collect(db[:,2,"type"])) == 1
+        @test length(collect(db[:,:,"type"])) == 2
+        @test length(collect(db[:, 4, :])) == 1
+        @test length(collect(db[:,:,"type"])) == 2
+        @test length(collect(db[:,:,:])) == 3
     end
 end

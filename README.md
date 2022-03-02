@@ -8,132 +8,74 @@ A Graph Database for Julia, built on top of [SQLite.jl](https://github.com/Julia
 
 <br><br>
 
-## Quickstart
 
-### Definitions
+## Definitions
 
 SQLiteGraph.jl uses the [Property Graph Model of the Cypher Query Language (PDF)](https://s3.amazonaws.com/artifacts.opencypher.org/openCypher9.pdf).
 
-- A **Node** describes a discrete object in a domain.
-- Nodes can have 0+ **labels** that classify what kind of node they are.
-- An **Edge** describes a directional relationship between nodes.
-- An edge must have a **type** that classifies the relationship.
-- Both edges and nodes can have additional key-value **properties** that provide further information.
+- A **_Node_** describes a discrete object in a domain.
+- Nodes can have 0+ **_labels_** that classify what kind of node they are.
+- An **_Edge_** describes a directional relationship between nodes.
+- An edge must have a **_type_** that classifies the relationship.
+- Both edges and nodes can have additional key-value **_properties_** that provide further information.
+
+<br><br>
+
+## Edges and Nodes
+
+- Nodes and Edges have a simple representation:
 
 ```julia
-using SQLiteGraph
+struct Node
+    id::Int
+    labels::Vector{String}
+    props::EasyConfig.Config
+end
 
-db = DB()
-# SQLiteGraph.DB(":memory:") (0 nodes, 0 edges)
-
-db[1] = Config(type="person", name="Fred")
-
-db[2] = Config(type="person", name="Robert Ford")
-
-db[2, 1] = Config(shot=true)
-```
-
-
-
--  Nodes and edges must have "properties" (something that is `JSON3.write`-able), even if its `nothing`.
-- Nodes must have an id (`Int`) in ascending order starting with `1`.
-- Add nodes and edges with `setindex!`
-  - E.g. Node 1: `db[1] = (x=1, y=2)`
-  - E.g. Edge 1 → 2: `db[1, 2] = (a=3, b=4)`
-- Query nodes and edges with `getindex` (as well as `find_nodes`/`find_edges`).
-  - E.g. Nodes 1, 2, and 3: `db[1:3]`
-  - E.g. Edges from 1 to 2 or 3: `db[1, 2:3]`
-  - Returned objects are `Node` or `Edge` (or generator if multiple objects queried):
-  - `Node` and `Edge` are simple structs.
-
-  ```julia
-  struct Node
-      id::Int
-      props::Config
-  end
-
-  struct Edge
-      source::Int
-      target::Int
-      props::config
-  end
-  ```
-
-### Creating a Graph Database
-
-```julia
-using SQLiteGraph
-
-db = DB()
-# SQLiteGraph.DB(":memory:") (0 nodes, 0 edges)
-```
-
-### Adding Nodes
-
-```julia
-# properties must be `JSON3.write`-able (saved in the SQLite database as TEXT)
-db[1] = (x=1, y=2)
-
-db[2] = (x=1, y=10)
-
-db[1]
-# Node 1
-#     • y: 2
-#     • x: 1
-```
-
-### Adding Edges
-
-```julia
-db[1, 2] = (a=1, b=2)
-
-db[1, 2]
-# Edge 1 → 2
-#     • a: 1
-#     • b: 2
-```
-
-## Iteration
-
-```julia
-for node in eachnode(db)
-    println(getfield(node, :id))
+struct Edge
+    source::Int
+    target::Int
+    type::String
+    props::EasyConfig.Config
 end
 ```
 
-### Querying Edges Based on Node ID
+- With simple constructors:
 
 ```julia
-db[1, :]  # all outgoing edges from node 1
+Node(id, labels...; props...)
 
-db[1, 2:5]  # outgoing edges from node 1 to any of nodes 2,3,4,5
-
-db[:, 2]  # all incoming edges to node 2
+Edge(source_id, target_id, type; props...)
 ```
 
-### Querying Based on Properties
+<br><br>
 
-- multiple keyword args are a logical "AND"
+## Adding Elements to the Graph
 
 ```julia
-find_nodes(db, x=1)
+using SQLiteGraph
 
-find_edges(db, b=2)
+db = DB()
+
+insert!(db, Node(1, "Person", "Actor"; name="Tom Hanks"))
+
+insert!(db, Node(2, "Movie"; title="Forest Gump"))
+
+insert!(db, Edge(1, 2, "Acts In"))
 ```
 
-- You can also query based on Regex matches of the `TEXT` properties:
+<br><br>
+
+## Editing Elements
+
+`insert!` will not replace an existing node or edge.  Instead, use `replace!`.
 
 ```julia
-find_nodes(db, r"x")
-
-find_edges(db, r"\"b\":2")
+replace!(db, Node(2, "Movie"; title="Forest Gump", genre="Drama"))
 ```
+
+<br><br>
 
 ## ✨ Attribution ✨
 
 SQLiteGraph is **STRONGLY** influenced (much has been copied verbatim) from [https://github.com/dpapathanasiou/simple-graph](https://github.com/dpapathanasiou/simple-graph).
-
-## TODOs
-
-- Prepare SQL into compiled `SQLite.Stmt`s.
-- traversal algorithms.
