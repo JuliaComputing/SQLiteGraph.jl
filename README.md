@@ -61,7 +61,7 @@ insert!(db, Node(1, "Person", "Actor"; name="Tom Hanks"))
 
 insert!(db, Node(2, "Movie"; title="Forest Gump"))
 
-insert!(db, Edge(1, 2, "Acts In"))
+insert!(db, Edge(1, 2, "Acts In"; awards=["Best Actor in a Leading Role"]))
 ```
 
 <br><br>
@@ -72,6 +72,32 @@ insert!(db, Edge(1, 2, "Acts In"))
 
 ```julia
 replace!(db, Node(2, "Movie"; title="Forest Gump", genre="Drama"))
+```
+
+<br><br>
+
+## Simple Queries
+
+- Use `getindex` to access elements.
+- If `:` is used as an index, an iterator is returned.
+
+```julia
+db[1]  # Node(2, "Movie"; title="Forest Gump", genre="Drama")
+
+for node in db[:]
+    println(node)
+end
+
+
+# (Pretend the graph is populated with many more items.  The following return iterators.)
+
+db[1, :, "Acts In"]  # All movies that Tom Hanks acts in
+
+db[:, 2, "Acts In"]  # All actors in "Forest Gump"
+
+db[1, 2, :]  # All relationships between "Tom Hanks" and "Forest Gump"
+
+db[:, :, :]  # All edges
 ```
 
 <br><br>
