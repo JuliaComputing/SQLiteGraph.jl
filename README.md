@@ -2,7 +2,7 @@
 [![Codecov](https://codecov.io/gh/joshday/SQLiteGraph.jl/branch/main/graph/badge.svg)](https://codecov.io/gh/joshday/SQLiteGraph.jl)
 
 
-# SQLiteGraph
+<h1 align="center">SQLiteGraph<h1>
 
 A Graph Database for Julia, built on top of [SQLite.jl](https://github.com/JuliaDatabases/SQLite.jl).
 
