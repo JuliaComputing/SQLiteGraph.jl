@@ -104,4 +104,4 @@ db[:, :, :]  # All edges
 
 ## ✨ Attribution ✨
 
-SQLiteGraph is **STRONGLY** influenced (much has been copied verbatim) from [https://github.com/dpapathanasiou/simple-graph](https://github.com/dpapathanasiou/simple-graph).
+SQLiteGraph is **STRONGLY** influenced by [https://github.com/dpapathanasiou/simple-graph](https://github.com/dpapathanasiou/simple-graph).
