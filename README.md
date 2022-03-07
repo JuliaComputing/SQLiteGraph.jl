@@ -105,3 +105,19 @@ db[:, :, :]  # All edges
 ## ✨ Attribution ✨
 
 SQLiteGraph is **STRONGLY** influenced by [https://github.com/dpapathanasiou/simple-graph](https://github.com/dpapathanasiou/simple-graph).
+
+
+<br><br>
+
+## Under the Hood Details
+
+- Nodes and edges are saved in the `nodes` and `edges` tables, respectively.
+- `nodes`
+    - `id` (`INTEGER`): unique identifier of a node
+    - `labels` (`TEXT`): stored as `;`-delimited (thus `;` cannot be used in a label)
+    - `props` (`TEXT`): stored as `JSON3.write(props)`
+- `edges`
+    - `source` (`INTEGER`): id of "from" node (`nodes(id)` is a foreign key)
+    - `target` (`INTEGER`): id of "to" node (`nodes(id)` is a foreign key)
+    - `type` (`TEXT`): the "class" of the edge/relationship
+    - `props` (`TEXT`)

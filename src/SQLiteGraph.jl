@@ -14,9 +14,9 @@ function single_result_execute(db, stmt, args...)
 end
 
 function print_props(io::IO, o::Config)
-    for (k,v) in pairs(o)
-        printstyled(io, "\n    • $k: ", color=:light_black)
-        print(IOContext(io, :compat=>true), v)
+    for (i,(k,v)) in enumerate(pairs(o))
+        print(io, k, '=', v)
+        i == length(o) || print(io, ", ")
     end
 end
 
@@ -32,11 +32,11 @@ Node(row::SQLite.Row) = Node(row.id, split(row.labels, ';', keepempty=false), JS
 function Base.show(io::IO, o::Node)
     print(io, "Node($(o.id)")
     !isempty(o.labels) && print(io, ", ", join(repr.(o.labels), ", "))
-    !isempty(o.props) && print(io, "; ", ("$k=$v" for (k,v) in pairs(o.props))...)
+    !isempty(o.props) && print(io, "; "); print_props(io, o.props)
     print(io, ')')
 end
 args(n::Node) = (n.id, isempty(n.labels) ? "" : join(n.labels, ';'), JSON3.write(n.props))
-Base.:(==)(a::Node, b::Node) = all(getfield(a,f) == getfield(b,f) for f in fieldnames(Node))
+
 
 
 struct Edge
@@ -49,11 +49,20 @@ Edge(src::Int, tgt::Int, type::String; props...) = Edge(src, tgt, type, Config(p
 Edge(row::SQLite.Row) = Edge(row.source, row.target, row.type, JSON3.read(row.props, Config))
 function Base.show(io::IO, o::Edge)
     print(io, "Edge($(o.source), $(o.target), ", repr(o.type))
-    !isempty(o.props) && print(io, "; ", ("$k=$v" for (k,v) in pairs(o.props))...)
+    !isempty(o.props) && print(io, "; "); print_props(io, o.props)
     print(io, ')')
 end
 args(e::Edge) = (e.source, e.target, e.type, JSON3.write(e.props))
+
+
+#-----------------------------------------------------------------------------# Base methods
+Base.:(==)(a::Node, b::Node) = all(getfield(a,f) == getfield(b,f) for f in fieldnames(Node))
 Base.:(==)(a::Edge, b::Edge) = all(getfield(a,f) == getfield(b,f) for f in fieldnames(Edge))
+
+Base.pairs(o::T) where {T<: Union{Node, Edge}} = (f => getfield(o,f) for f in fieldnames(T))
+
+Base.NamedTuple(o::Union{Node,Edge}) = NamedTuple(pairs(o))
+
 
 
 #-----------------------------------------------------------------------------# DB
@@ -70,7 +79,6 @@ struct DB
                 labels TEXT NOT NULL,
                 props TEXT NOT NULL
             );",
-
             # edges
             "CREATE TABLE IF NOT EXISTS edges (
                 source INTEGER NOT NULL REFERENCES nodes(id),
