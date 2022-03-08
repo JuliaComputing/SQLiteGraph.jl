@@ -130,55 +130,51 @@ function Base.replace!(db::DB, edge::Edge)
     db
 end
 
+#-----------------------------------------------------------------------------# query
+function query(db::DB, select::String, from::String, whr::String, args=nothing)
+    stmt = "SELECT $select FROM $from WHERE $whr"
+    # @info stmt
+    res = isnothing(args) ? execute(db, stmt) : execute(db, stmt, args)
+    if isempty(res)
+        error("No $from found where: $whr")
+    else
+        return res
+    end
+end
+
 #-----------------------------------------------------------------------------# getindex (Node)
-function Base.getindex(db::DB, id::Integer)
-    res = execute(db, "SELECT * FROM nodes WHERE id = ?", (id,))
-    isempty(res) ? error("Node $id does not exist.") : Node(first(res))
-end
-function Base.getindex(db::DB, ::Colon)
-    res = execute(db, "SELECT * FROM nodes")
-    isempty(res) ? error("No nodes exist yet.") : (Node(row) for row in res)
-end
+Base.getindex(db::DB, i::Integer) = Node(first(query(db, "*", "nodes", "id=$i")))
+Base.getindex(db::DB, ::Colon) = (Node(row) for row in query(db, "*", "nodes", "TRUE"))
 
 #-----------------------------------------------------------------------------# getindex (Edge)
 # all specified
 function Base.getindex(db::DB, i::Integer, j::Integer, type::AbstractString)
-    res = execute(db, "SELECT * FROM edges WHERE source=? AND target=? AND type=?", (i,j,type))
-    isempty(res) ? error("Edge $i → $type → $j does not exist.") : Edge(first(res))
+    Edge(first(query(db, "*", "edges", "source=$i AND target=$j AND type LIKE '$type'")))
 end
 
 # one colon
 function Base.getindex(db::DB, i::Integer, j::Integer, ::Colon)
-    res = execute(db, "SELECT * FROM edges WHERE source=? AND target=?", (i, j))
-    isempty(res) ? error("No edges connect nodes $i → $j.") : (Edge(row) for row in res)
+    (Edge(row) for row in query(db, "*", "edges", "source=$i AND target=$j"))
 end
 function Base.getindex(db::DB, i::Integer, ::Colon, type::AbstractString)
-    res = execute(db, "SELECT * FROM edges WHERE source=? AND type=?", (i,type))
-    isempty(res) ? error("No outgoing edges $type → $i") : (Edge(row) for row in res)
+    (Edge(row) for row in query(db, "*", "edges", "source=$i AND type LIKE '$type'"))
 end
 function Base.getindex(db::DB, ::Colon, j::Integer, type::AbstractString)
-    res = execute(db, "SELECT * FROM edges WHERE target=? AND type=?", (j, type))
-    isempty(res) ? error("No incoming edges $type → $j") : (Edge(row) for row in res)
+    (Edge(row) for row in query(db, "*", "edges", "target=$j AND type LIKE '$type'"))
 end
 
 # two colons
 function Base.getindex(db::DB, i::Integer, ::Colon, ::Colon)
-    res = execute(db, "SELECT * FROM edges WHERE source=?", (i,))
-    isempty(res) ? error("No outgoing edges from node $i") : (Edge(row) for row in res)
+    (Edge(row) for row in query(db, "*", "edges", "source=$i"))
 end
 function Base.getindex(db::DB, i::Colon, j::Integer, ::Colon)
-    res = execute(db, "SELECT * FROM edges WHERE target=?", (j,))
-    isempty(res) ? error("No incoming edges into node $j") : (Edge(row) for row in res)
+    (Edge(row) for row in query(db, "*", "edges", "target=$j"))
 end
 function Base.getindex(db::DB, ::Colon, ::Colon, type::AbstractString)
-    res = execute(db, "SELECT * FROM edges WHERE type=?", (type,))
-    isempty(res) ? error("No edges with type $type") : (Edge(row) for row in res)
+    (Edge(row) for row in query(db, "*", "edges", "type LIKE '$type'"))
 end
 
 # all colons
-function Base.getindex(db::DB, ::Colon, ::Colon, ::Colon)
-    res = execute(db, "SELECT * FROM edges")
-    isempty(res) ? error("No edges exist yet.") : (Edge(row) for row in res)
-end
+Base.getindex(db::DB, ::Colon, ::Colon, ::Colon) = (Edge(row) for row in query(db,"*", "edges", "TRUE"))
 
 end
