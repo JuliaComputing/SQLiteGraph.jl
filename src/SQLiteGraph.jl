@@ -181,13 +181,8 @@ Base.getindex(db::DB, ::Colon, ::Colon, ::Colon) = (Edge(row) for row in query(d
 function adjacency_matrix(db::DB)
     n = n_nodes(db)
     out = falses(n, n)
-    src, tgt = Int[], Int[]
     for row in execute(db, "SELECT DISTINCT source, target FROM edges;")
-        push!(src, row.source)
-        push!(tgt, row.target)
-    end
-    for (i,j) in zip(src, tgt)
-        out[i,j] = true
+        out[row.source, row.target] = true
     end
     out
 end
