@@ -15,9 +15,12 @@ end
 
 function print_props(io::IO, o::Config)
     for (i,(k,v)) in enumerate(pairs(o))
-        print(io, k, '=', repr(v))
-        i == length(o) || print(io, ", ")
+        if i < 5
+            print(io, k, '=', repr(v))
+            i == length(o) || print(io, ", ")
+        end
     end
+    length(o) > 5 && print(io, "…")
 end
 
 
