@@ -15,7 +15,7 @@ end
 
 function print_props(io::IO, o::Config)
     for (i,(k,v)) in enumerate(pairs(o))
-        print(io, k, '=', v)
+        print(io, k, '=', repr(v))
         i == length(o) || print(io, ", ")
     end
 end
@@ -176,5 +176,20 @@ end
 
 # all colons
 Base.getindex(db::DB, ::Colon, ::Colon, ::Colon) = (Edge(row) for row in query(db,"*", "edges", "TRUE"))
+
+#-----------------------------------------------------------------------------# adjacency_matrix
+function adjacency_matrix(db::DB)
+    n = n_nodes(db)
+    out = falses(n, n)
+    src, tgt = Int[], Int[]
+    for row in execute(db, "SELECT DISTINCT source, target FROM edges;")
+        push!(src, row.source)
+        push!(tgt, row.target)
+    end
+    for (i,j) in zip(src, tgt)
+        out[i,j] = true
+    end
+    out
+end
 
 end
