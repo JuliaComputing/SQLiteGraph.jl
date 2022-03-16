@@ -181,10 +181,16 @@ end
 Base.getindex(db::DB, ::Colon, ::Colon, ::Colon) = (Edge(row) for row in query(db,"*", "edges", "TRUE"))
 
 #-----------------------------------------------------------------------------# adjacency_matrix
-function adjacency_matrix(db::DB)
+"""
+    adjacency_matrix(db, type)
+
+Create the adjacency matrix for a given edge `type`.  If `A[i,j] == true`, there exists an
+edge from node `i` to node `j` with type `type`.
+"""
+function adjacency_matrix(db::DB, type)
     n = n_nodes(db)
     out = falses(n, n)
-    for row in execute(db, "SELECT DISTINCT source, target FROM edges;")
+    for row in execute(db, "SELECT DISTINCT source, target FROM edges WHERE type=?;", (type,))
         out[row.source, row.target] = true
     end
     out
