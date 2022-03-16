@@ -60,4 +60,14 @@ end
         @test length(collect(db[:,:,"type"])) == 2
         @test length(collect(db[:,:,:])) == 3
     end
+    @testset "Adj Matrix" begin
+        m = SQLiteGraph.adjacency_matrix(db, "type")
+        @test sum(m) == 2
+        @test m[1, 2]
+        @test m[1, 3]
+
+        m2 = SQLiteGraph.adjacency_matrix(db, "type 2")
+        @test sum(m2) == 1
+        @test m2[1, 4]
+    end
 end
