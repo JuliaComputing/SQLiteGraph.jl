@@ -30,6 +30,9 @@ db = DB()
             @test n.id == i
         end
         @test length(collect(db[:])) == 5
+        @test length(collect(db["lab"])) == 3
+        @test length(collect(db["lab1"])) == 2
+        @test length(collect(db["lab2"])) == 2
     end
 end
 
