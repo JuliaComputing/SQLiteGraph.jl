@@ -80,14 +80,16 @@ replace!(db, Node(2, "Movie"; title="Forest Gump", genre="Drama"))
 
 - Use `getindex` to access elements.
 - If `:` is used as an index, an iterator is returned.
+- If `s::String` is used as an index, an iterator of nodes where `s` is *one* of the labels is returned.
 
 ```julia
-db[1]  # Node(2, "Movie"; title="Forest Gump", genre="Drama")
+db[1]  # Node(1, "Person", "Actor"; name="Tom Hanks")
 
 for node in db[:]
     println(node)
 end
 
+only(db["Movie"])  # Node(2, "Movie"; title="Forest Gump", genre="Drama")
 
 # (Pretend the graph is populated with many more items.  The following return iterators.)
 
