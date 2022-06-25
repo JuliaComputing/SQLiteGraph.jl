@@ -38,7 +38,7 @@ function Base.show(io::IO, o::Node)
     !isempty(o.props) && print(io, "; "); print_props(io, o.props)
     print(io, ')')
 end
-args(n::Node) = (n.id, isempty(n.labels) ? "" : join(n.labels, ';'), JSON3.write(n.props))
+args(n::Node) = (n.id, isempty(n.labels) ? "" : ";"*join(n.labels, ';')*";", JSON3.write(n.props))
 
 
 
@@ -148,6 +148,7 @@ end
 #-----------------------------------------------------------------------------# getindex (Node)
 Base.getindex(db::DB, i::Integer) = Node(first(query(db, "*", "nodes", "id=$i")))
 Base.getindex(db::DB, ::Colon) = (Node(row) for row in query(db, "*", "nodes", "TRUE"))
+Base.getindex(db::DB, label::String) = (Node(row) for row in SQLiteGraph.query(db, "*", "nodes", "labels LIKE '%;$label;%'"))
 
 #-----------------------------------------------------------------------------# getindex (Edge)
 # all specified
